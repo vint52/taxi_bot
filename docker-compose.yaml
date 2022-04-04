@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  tg:
+    restart: always
+    build: ./src
+    environment:
+      - TG_TOKEN=$TG_TOKEN
+      - TG_LOG=$TG_LOG
+      - TG_ADMIN_ID=$TG_ADMIN_ID
+      - RDS_HOST=$RDS_HOST
+      - RDS_PASSWORD=$RDS_PASSWORD
+      - TXI_USERNAME=$TXI_USERNAME
+      - TXI_PASSWORD=$TXI_PASSWORD
+      - TXI_UPDATE_PERIOD=$TXI_UPDATE_PERIOD
+    volumes:
+      - ./logs:/logs
+  redis:
+    image: redis:alpine
+    restart: always
+    command: redis-server /conf/master.conf
+    volumes:
+      - ./logs:/log
+      - ./redis/conf:/conf/
+      - ./redis/data:/data/
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=$RDS_PASSWORD
