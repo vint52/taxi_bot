@@ -145,11 +145,15 @@ async def update_data():
     if send_flag:
         await send_all()
 
-    await asyncio.sleep(UPDATE_PERIOD)
+
+async def scheduler():
+    while True:
+        await update_data()
+        await asyncio.sleep(UPDATE_PERIOD)
 
 
 async def on_startup(_):
-    asyncio.create_task(update_data())
+    asyncio.create_task(scheduler())
 
 
 def main():
