@@ -17,8 +17,8 @@ UPDATE_PERIOD = int(os.getenv('TXI_UPDATE_PERIOD', '25'))
 API_TOKEN = os.getenv('TG_TOKEN')
 
 logging.basicConfig(level=logging.INFO, filename=os.getenv('TG_LOG'),
-                    formatter=logging.Formatter("%(asctime)s;%(levelname)s;%(message)s",
-                                                "%Y-%m-%d %H:%M:%S"))
+                    format='%(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
