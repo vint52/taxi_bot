@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from datetime import datetime
 
 from taxi import Taxi
@@ -148,7 +149,10 @@ async def update_data():
 
 async def scheduler():
     while True:
-        await update_data()
+        try:
+            await update_data()
+        except Exception as inst:
+            logging.error(inst)
         await asyncio.sleep(UPDATE_PERIOD)
 
 
