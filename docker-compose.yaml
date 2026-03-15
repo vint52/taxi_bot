@@ -35,8 +35,6 @@ services:
       - ./logs:/log
       - ./redis/conf:/conf/
       - ./redis/data:/data/
-    ports:
-      - "127.0.0.1:6379:6379"
     environment:
       - REDIS_PASSWORD=${RDS_PASSWORD}
     networks:
