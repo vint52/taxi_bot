@@ -53,10 +53,6 @@ class BotHandlers:
         """Handle /logs command (admin only)."""
         await self.admin_handlers.user_logs_handler(message)
     
-    async def add_test_user_handler(self, message: Message) -> None:
-        """Handle /addtestuser command (admin only)."""
-        await self.admin_handlers.add_test_user_handler(message)
-    
     async def user_callback_handler(self, callback_query: CallbackQuery) -> None:
         """Handle user selection callback."""
         await self.callback_handlers.user_callback_handler(callback_query)
@@ -73,10 +69,6 @@ class BotHandlers:
         self.router.message.register(self.start_handler, Command("help"))
         self.router.message.register(self.delete_user_handler, Command("delete"))
         self.router.message.register(self.user_logs_handler, Command("logs"))
-        self.router.message.register(
-            self.add_test_user_handler,
-            Command("addtestuser"),
-        )
         self.router.message.register(self.logs_handler, F.text == BTN_LOGS)
         self.router.message.register(self.users_handler, F.text == BTN_USERS)
         self.router.message.register(

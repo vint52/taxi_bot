@@ -13,9 +13,6 @@ from constants import (
     MSG_LOGS_DISABLED,
     MSG_NO_LOGS_FOR_USER,
     MSG_NO_USERS,
-    MSG_REDIS_CONNECTION_ERROR,
-    MSG_TEST_USER_ADDED,
-    MSG_TEST_USER_EXISTS,
     MSG_USER_DELETED,
     MSG_USER_LOGS_HEADER,
     MSG_USER_LOGS_USAGE,
@@ -224,33 +221,3 @@ class AdminHandlers:
         
         # Send logs separately
         await message.reply("📝 Логи:\n" + user_logs)
-    
-    async def add_test_user_handler(self, message: Message) -> None:
-        """Handle /addtestuser command (admin only)."""
-        if not self.is_admin(message.from_user.id):
-            return
-        
-        logger.info(f'Add test user - {message.from_user.username} ({message.from_user.id})')
-        keyboard = self.get_keyboard(message.from_user.id)
-        
-        try:
-            # Test Redis connection
-            if not self.db.client.ping():
-                await message.reply(MSG_REDIS_CONNECTION_ERROR, reply_markup=keyboard)
-                return
-            
-            # Add test user
-            test_user_id = 123456789
-            self.db.add_user(test_user_id)
-            
-            # Check if user was added
-            users = self.db.get_users()
-            logger.debug(f'Users after adding test user: {users}')
-            if users and str(test_user_id) in users:
-                await message.reply(MSG_TEST_USER_ADDED, reply_markup=keyboard)
-            else:
-                await message.reply(MSG_TEST_USER_EXISTS, reply_markup=keyboard)
-                
-        except Exception as e:
-            logger.error(f'Error adding test user: {e}')
-            await message.reply(f"❌ Ошибка: {e}", reply_markup=keyboard)

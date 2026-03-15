@@ -30,7 +30,6 @@ BTN_BACK_TO_USERS = "⬅️ Назад к пользователям"
 # Admin commands
 CMD_DELETE_USER = "/delete"
 CMD_USER_LOGS = "/logs"
-CMD_ADD_TEST_USER = "/addtestuser"
 
 # Messages
 MSG_USER_DELETED = "Пользователь {user_id} удален"
@@ -52,12 +51,6 @@ MSG_USER_DELETED_INLINE = "✅ Пользователь {user_id} удален"
 MSG_USER_NOT_FOUND_INLINE = "❌ Пользователь {user_id} не найден"
 MSG_CANNOT_DELETE_SELF_INLINE = "❌ Нельзя удалить самого себя"
 MSG_USERS_LIST_HEADER = "👥 Список пользователей:\n\n"
-
-# Test user messages
-MSG_TEST_USER_ADDED = "✅ Тестовый пользователь 123456789 добавлен"
-MSG_TEST_USER_EXISTS = "ℹ️ Тестовый пользователь уже существует"
-MSG_REDIS_CONNECTION_ERROR = "❌ Ошибка подключения к Redis"
-MSG_REDIS_CONNECTION_OK = "✅ Redis подключение работает"
 
 # Trip display settings
 RECENT_TRIPS_COUNT = 3
