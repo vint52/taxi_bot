@@ -1,0 +1,21 @@
+# Telegram Bot Framework
+aiogram==3.22.0
+
+# HTTP Requests
+requests==2.31.0
+
+# HTML Parsing
+lxml==4.9.3
+
+# Redis Client
+redis==7.0.1
+
+# Utilities
+pytz==2023.3
+
+# Code quality tools
+flake8==6.1.0
+flake8-docstrings==1.7.0
+flake8-import-order==0.18.2
+isort==5.12.0
+autopep8==2.0.4
