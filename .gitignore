@@ -46,3 +46,8 @@ dump.rdb
 # OS
 .DS_Store
 Thumbs.db
+
+# Local tooling
+.venv/
+.ruff_cache/
+.pytest_cache/
