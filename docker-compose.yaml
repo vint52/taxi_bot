@@ -2,48 +2,36 @@ services:
   tg:
     container_name: taxi_bot
     restart: unless-stopped
-    build: 
+    build:
       context: ./src
       dockerfile: Dockerfile
     env_file:
       - .env
-    environment:
-      - TG_TOKEN=${TG_TOKEN}
-      - TG_LOG=${TG_LOG}
-      - TG_ADMIN_ID=${TG_ADMIN_ID}
-      - RDS_HOST=${RDS_HOST}
-      - RDS_PASSWORD=${RDS_PASSWORD}
-      - RDS_PORT=${RDS_PORT:-6379}
-      - RDS_DB=${RDS_DB:-0}
-      - TXI_USERNAME=${TXI_USERNAME}
-      - TXI_PASSWORD=${TXI_PASSWORD}
-      - TXI_UPDATE_PERIOD=${TXI_UPDATE_PERIOD:-25}
-      - DEBUG_HTML_DIR=${DEBUG_HTML_DIR}
     volumes:
       - ./logs:/logs
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - taxi_network
 
   redis:
     container_name: taxi_redis
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
-    command: redis-server /conf/master.conf
+    command: ["redis-server", "/conf/master.conf", "--requirepass", "${RDS_PASSWORD}"]
     volumes:
-      - ./logs:/log
-      - ./redis/conf:/conf/
-      - ./redis/data:/data/
-    environment:
-      - REDIS_PASSWORD=${RDS_PASSWORD}
-    networks:
-      - taxi_network
+      - ./redis/conf:/conf:ro
+      - ./redis/data:/data
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping || exit 1"]
+      test: ["CMD-SHELL", "redis-cli -a \"$${RDS_PASSWORD}\" ping | grep -q PONG"]
       interval: 10s
       timeout: 3s
       retries: 3
+    environment:
+      - RDS_PASSWORD=${RDS_PASSWORD}
+    networks:
+      - taxi_network
 
 networks:
   taxi_network:
