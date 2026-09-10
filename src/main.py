@@ -1,129 +1,73 @@
-"""Main entry point for the Taxi Bot."""
+"""Entry point: wires configuration, storage, taxi client, scheduler and Telegram."""
+
+from __future__ import annotations
+
 import asyncio
-from contextlib import suppress
 import logging
 import sys
+from zoneinfo import ZoneInfo
 
 from aiogram import Bot, Dispatcher
 
-from config import Config
-from database import RedisDatabase
-from handlers import BotHandlers
+import handlers
+from config import Config, ConfigError
+from database import Storage
 from logging_config import setup_logging
+from logs import LogReader
+from notifier import Notifier
 from scheduler import UpdateScheduler
 from services import TaxiService
-from taxi import Taxi, TaxiAuthenticationError
-
+from taxi import TaxiClient
 
 logger = logging.getLogger(__name__)
 
 
-class TaxiBot:
-    """Main bot application."""
-    
-    def __init__(self, config: Config):
-        """Initialize the bot."""
-        self.config = config
-        self._initialize_components()
-        self._register_handlers()
-    
-    def _initialize_components(self) -> None:
-        """Initialize all bot components."""
-        # Initialize core components
-        self.bot = Bot(token=self.config.tg_token)
-        self.dp = Dispatcher()
-        self.db = RedisDatabase(self.config)
-        self.scheduler_task: asyncio.Task | None = None
-        
-        # Initialize taxi client
-        try:
-            self.taxi_client = Taxi(
-                self.config.taxi_username,
-                self.config.taxi_password,
-                debug_html_dir=self.config.debug_html_dir
-            )
-        except TaxiAuthenticationError as e:
-            logger.error(f"Failed to authenticate with taxi service: {e}")
-            raise
-        
-        # Initialize services
-        self.taxi_service = TaxiService(self.db, self.taxi_client)
-        self.handlers = BotHandlers(self.config, self.db, self.taxi_service)
-        self.scheduler = UpdateScheduler(self.config, self.db, self.taxi_service, self.bot)
-    
-    def _register_handlers(self) -> None:
-        """Register all bot handlers."""
-        self.handlers.register_handlers(self.dp)
-    
-    async def send_updates_to_all_users(self) -> None:
-        """Send updates to all registered users."""
-        logger.debug("Preparing to send updates to all users")
-        msg = self.taxi_service.make_balance_message()
-        users = self.db.get_users()
-        logger.debug(f"Found {len(users)} registered users: {list(users)}")
-        
-        for user_id in users:
-            try:
-                user_id_int = int(user_id)
-                logger.info(f'Sending update to user {user_id}')
-                logger.debug(f'Sending message to user {user_id}, message length: {len(msg)}')
-                await self.bot.send_message(user_id_int, msg, parse_mode="HTML")
-                logger.debug(f'Successfully sent update to user {user_id}')
-            except Exception as e:
-                logger.error(f'Failed to send message to user {user_id}: {e}')
-                logger.debug(f'Failed to send message to user {user_id}, error type: {type(e).__name__}')
-    
-    async def on_startup(self) -> None:
-        """Handler called when bot starts."""
-        logger.info("Bot is starting up...")
-        self.scheduler_task = asyncio.create_task(self.scheduler.start())
-        logger.info(f"Update scheduler started (interval: {self.config.taxi_update_period}s)")
-    
-    async def on_shutdown(self) -> None:
-        """Handler called when bot shuts down."""
-        logger.info("Bot is shutting down...")
-        await self.scheduler.stop()
-        if self.scheduler_task:
-            self.scheduler_task.cancel()
-            with suppress(asyncio.CancelledError):
-                await self.scheduler_task
+async def run(config: Config) -> None:
+    storage = Storage.from_config(config)
+    await storage.ping()
+    logger.info("Connected to Redis at %s:%s", config.redis_host, config.redis_port)
 
-    async def start(self) -> None:
-        """Start the bot."""
-        logger.info("Starting Taxi Bot...")
-        await self.on_startup()
-        try:
-            await self.bot.delete_webhook(drop_pending_updates=True)
-            await self.dp.start_polling(self.bot)
-        finally:
-            await self.on_shutdown()
+    client = TaxiClient(config.taxi_username, config.taxi_password, config.debug_html_dir)
+    taxi_service = TaxiService(storage, client, ZoneInfo(config.timezone))
 
+    bot = Bot(token=config.tg_token)
+    scheduler = UpdateScheduler(taxi_service, Notifier(bot, storage), config.update_period)
 
-async def run() -> None:
-    """Create and run the bot."""
-    config = Config.from_env()
-    setup_logging(config.tg_log_path)
-    bot = TaxiBot(config)
-    await bot.start()
+    dp = Dispatcher()
+    dp["config"] = config
+    dp["storage"] = storage
+    dp["taxi_service"] = taxi_service
+    dp["log_reader"] = LogReader(config.tg_log_path)
+    handlers.setup(dp)
+
+    try:
+        scheduler.start()
+        await bot.delete_webhook(drop_pending_updates=True)
+        logger.info("Bot started")
+        await dp.start_polling(bot)
+    finally:
+        await scheduler.stop()
+        await storage.close()
+        await bot.session.close()
+        logger.info("Bot stopped")
 
 
 def main() -> None:
-    """Synchronous entry point."""
     try:
-        asyncio.run(run())
-    except ValueError as e:
-        print(f"Configuration error: {e}", file=sys.stderr)
+        config = Config.from_env()
+    except ConfigError as exc:
+        print(f"Configuration error: {exc}", file=sys.stderr)
         sys.exit(1)
-    except TaxiAuthenticationError as e:
-        logger.error(f"Authentication error: {e}")
-        sys.exit(1)
+
+    setup_logging(config.log_level, config.tg_log_path)
+    try:
+        asyncio.run(run(config))
     except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}", exc_info=True)
+        pass
+    except Exception:
+        logger.exception("Bot crashed")
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
